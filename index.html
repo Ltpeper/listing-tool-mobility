@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Listing Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f9f8f6;
+    --surface: #ffffff;
+    --border: #e8e4dd;
+    --border-strong: #ccc8c0;
+    --text: #1a1a18;
+    --text-muted: #7a7870;
+    --text-faint: #b0ada6;
+    --accent: #1a1a18;
+    --success: #2d6a4f;
+    --radius: 6px;
+    --radius-lg: 10px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .page {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 100vh;
+  }
+
+  /* Left panel */
+  .panel-input {
+    padding: 48px 40px;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Right panel */
+  .panel-output {
+    padding: 48px 40px;
+    background: var(--bg);
+    min-height: 100vh;
+  }
+
+  .logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 40px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text);
+  }
+
+  .panel-title {
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+  .panel-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+
+  .hint {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 22px;
+  }
+  .hint strong { color: var(--text); font-weight: 500; }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  textarea {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    resize: vertical;
+    min-height: 200px;
+    line-height: 1.6;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { outline: none; border-color: var(--border-strong); }
+  textarea::placeholder { color: var(--text-faint); }
+
+  .char-count {
+    font-size: 11px;
+    color: var(--text-faint);
+    text-align: right;
+    margin-top: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .generate-btn {
+    width: 100%;
+    padding: 13px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+  }
+  .generate-btn:hover { opacity: 0.85; }
+  .generate-btn:active { transform: scale(0.99); }
+  .generate-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  .loading-bar {
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 14px;
+    overflow: hidden;
+    display: none;
+  }
+  .loading-bar.visible { display: block; }
+  .loading-bar-inner {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    animation: slide 1.6s ease-in-out infinite;
+  }
+  @keyframes slide {
+    0%   { width: 0%;   margin-left: 0%; }
+    50%  { width: 60%;  margin-left: 20%; }
+    100% { width: 0%;   margin-left: 100%; }
+  }
+
+  .loading-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 10px;
+    display: none;
+  }
+  .loading-text.visible { display: block; }
+
+  .error-msg {
+    background: #fff5f5;
+    border: 1px solid #fcc;
+    border-radius: var(--radius);
+    padding: 11px 14px;
+    font-size: 13px;
+    color: #c00;
+    display: none;
+    margin-top: 12px;
+  }
+  .error-msg.visible { display: block; }
+
+  .panel-footer {
+    margin-top: auto;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    margin-top: 32px;
+    font-size: 11px;
+    color: var(--text-faint);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Output */
+  .output-title {
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .output-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 420px;
+    text-align: center;
+    gap: 14px;
+  }
+  .empty-icon {
+    width: 40px; height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+    font-size: 16px;
+  }
+  .empty-state p { font-size: 13px; color: var(--text-faint); max-width: 200px; line-height: 1.6; }
+
+  .fields-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .output-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .output-block:hover { border-color: var(--border-strong); }
+
+  .output-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .output-block-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .copy-btn {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 3px 10px;
+    background: var(--surface);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: var(--border-strong); color: var(--text); }
+  .copy-btn.copied { color: var(--success); border-color: var(--success); }
+
+  .output-block-content {
+    padding: 11px 14px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .output-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  @media (max-width: 860px) {
+    .page { grid-template-columns: 1fr; }
+    .panel-input { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    .output-grid-2 { grid-template-columns: 1fr; }
+    .panel-input, .panel-output { padding: 32px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Input -->
+  <div class="panel-input">
+    <div class="logo">Product listing generator</div>
+
+    <h1 class="panel-title">Paste product info,<br>get a Dutch listing.</h1>
+    <p class="panel-sub">Copy all text from the competitor page (Ctrl+A → Ctrl+C) and paste it below. Claude extracts everything and writes a complete Shopify listing in Dutch.</p>
+
+    <div class="hint">
+      <strong>How to use:</strong> Go to the competitor product page → select all (Ctrl+A) → copy (Ctrl+C) → paste below → click generate.
+    </div>
+
+    <div class="field">
+      <label>Raw product text</label>
+      <textarea id="inp-raw"
+        placeholder="Paste everything from the competitor page here — product name, description, specs, price, compatible models, anything..."
+        oninput="document.getElementById('char-count').textContent = this.value.length.toLocaleString()">
+      </textarea>
+      <div class="char-count"><span id="char-count">0</span> characters</div>
+    </div>
+
+    <button class="generate-btn" id="gen-btn" onclick="generateListing()">Generate listing →</button>
+    <div class="loading-bar" id="loading-bar"><div class="loading-bar-inner"></div></div>
+    <div class="loading-text" id="loading-text">Generating Dutch Shopify listing...</div>
+    <div class="error-msg" id="error-msg">Something went wrong. Please try again, or check the console for details.</div>
+
+    <div class="panel-footer">Internal tool — VA use only</div>
+  </div>
+
+  <!-- Output -->
+  <div class="panel-output">
+    <h2 class="output-title">Shopify listing</h2>
+    <p class="output-sub">All fields ready to copy into Shopify</p>
+
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">→</div>
+      <p>Paste product text on the left and click generate</p>
+    </div>
+
+    <div id="fields-list" class="fields-list" style="display:none;">
+
+      <div class="output-grid-2">
+        <div class="output-block" id="block-titel">
+          <div class="output-block-header">
+            <span class="output-block-label">Title</span>
+            <button class="copy-btn" onclick="copyBlock('block-titel',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-titel"></div>
+        </div>
+        <div class="output-block" id="block-prijs">
+          <div class="output-block-header">
+            <span class="output-block-label">Price</span>
+            <button class="copy-btn" onclick="copyBlock('block-prijs',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-prijs"></div>
+        </div>
+      </div>
+
+      <div class="output-block" id="block-beschrijving">
+        <div class="output-block-header">
+          <span class="output-block-label">Description</span>
+          <button class="copy-btn" onclick="copyBlock('block-beschrijving',this)">Copy</button>
+        </div>
+        <div class="output-block-content" id="out-beschrijving"></div>
+      </div>
+
+      <div class="output-grid-2">
+        <div class="output-block" id="block-plus1">
+          <div class="output-block-header">
+            <span class="output-block-label">Pluspunt 1</span>
+            <button class="copy-btn" onclick="copyBlock('block-plus1',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-plus1"></div>
+        </div>
+        <div class="output-block" id="block-plus2">
+          <div class="output-block-header">
+            <span class="output-block-label">Pluspunt 2</span>
+            <button class="copy-btn" onclick="copyBlock('block-plus2',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-plus2"></div>
+        </div>
+        <div class="output-block" id="block-plus3">
+          <div class="output-block-header">
+            <span class="output-block-label">Pluspunt 3</span>
+            <button class="copy-btn" onclick="copyBlock('block-plus3',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-plus3"></div>
+        </div>
+        <div class="output-block" id="block-min1">
+          <div class="output-block-header">
+            <span class="output-block-label">Minpunt 1</span>
+            <button class="copy-btn" onclick="copyBlock('block-min1',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-min1"></div>
+        </div>
+      </div>
+
+      <div class="output-grid-2">
+        <div class="output-block" id="block-merk">
+          <div class="output-block-header">
+            <span class="output-block-label">Merk</span>
+            <button class="copy-btn" onclick="copyBlock('block-merk',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-merk"></div>
+        </div>
+        <div class="output-block" id="block-modellen">
+          <div class="output-block-header">
+            <span class="output-block-label">Modellen</span>
+            <button class="copy-btn" onclick="copyBlock('block-modellen',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-modellen"></div>
+        </div>
+      </div>
+
+      <div class="output-block" id="block-eigenschappen">
+        <div class="output-block-header">
+          <span class="output-block-label">Product eigenschappen</span>
+          <button class="copy-btn" onclick="copyBlock('block-eigenschappen',this)">Copy</button>
+        </div>
+        <div class="output-block-content" id="out-eigenschappen"></div>
+      </div>
+
+      <div class="output-block" id="block-specificaties">
+        <div class="output-block-header">
+          <span class="output-block-label">Specificaties</span>
+          <button class="copy-btn" onclick="copyBlock('block-specificaties',this)">Copy</button>
+        </div>
+        <div class="output-block-content" id="out-specificaties"></div>
+      </div>
+
+      <div class="output-grid-2">
+        <div class="output-block" id="block-geschikt">
+          <div class="output-block-header">
+            <span class="output-block-label">Geschikt voor modellen</span>
+            <button class="copy-btn" onclick="copyBlock('block-geschikt',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-geschikt"></div>
+        </div>
+        <div class="output-block" id="block-vendor">
+          <div class="output-block-header">
+            <span class="output-block-label">Vendor</span>
+            <button class="copy-btn" onclick="copyBlock('block-vendor',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-vendor"></div>
+        </div>
+      </div>
+
+      <div class="output-grid-2">
+        <div class="output-block" id="block-collectie">
+          <div class="output-block-header">
+            <span class="output-block-label">Collectie</span>
+            <button class="copy-btn" onclick="copyBlock('block-collectie',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-collectie"></div>
+        </div>
+        <div class="output-block" id="block-tags">
+          <div class="output-block-header">
+            <span class="output-block-label">Tags</span>
+            <button class="copy-btn" onclick="copyBlock('block-tags',this)">Copy</button>
+          </div>
+          <div class="output-block-content" id="out-tags"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function copyBlock(blockId, btn) {
+    const content = document.querySelector('#' + blockId + ' .output-block-content');
+    navigator.clipboard.writeText(content.textContent.trim()).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  function set(id, value) {
+    document.getElementById(id).textContent = value || '—';
+  }
+
+  async function generateListing() {
+    const raw = document.getElementById('inp-raw').value.trim();
+    if (!raw) { alert('Please paste some product text first.'); return; }
+
+    const btn       = document.getElementById('gen-btn');
+    const bar       = document.getElementById('loading-bar');
+    const txt       = document.getElementById('loading-text');
+    const err       = document.getElementById('error-msg');
+    const empty     = document.getElementById('empty-state');
+    const fields    = document.getElementById('fields-list');
+
+    btn.disabled = true;
+    bar.classList.add('visible');
+    txt.classList.add('visible');
+    err.classList.remove('visible');
+    fields.style.display = 'none';
+    empty.style.display = 'flex';
+
+    const prompt = `You are a Dutch product copywriter for a webshop selling car accessories for Volvo, Polestar, and Lynk & Co vehicles. Your writing style is friendly, clear, and professional.
+
+Given the raw text copied from a competitor product page, extract all relevant info and generate a complete Shopify listing in DUTCH.
+
+Rules:
+- Rewrite everything in your own words — never copy sentences directly
+- All output must be in Dutch
+- If info is missing, make a sensible educated guess from context
+
+Raw product text:
+---
+${raw}
+---
+
+Return ONLY valid JSON, no markdown, no backticks, no explanation:
+{
+  "titel": "Dutch product title, max 70 characters",
+  "prijs": "Price number only e.g. 1350.00, or empty string if not found",
+  "beschrijving": "2-3 paragraphs in Dutch. Friendly, informative, highlight key benefits.",
+  "pluspunt1": "Concrete benefit, one Dutch sentence",
+  "pluspunt2": "Concrete benefit, one Dutch sentence",
+  "pluspunt3": "Concrete benefit, one Dutch sentence",
+  "minpunt1": "Honest limitation, one Dutch sentence",
+  "merk": "Brand name",
+  "modellen": "Comma-separated compatible models",
+  "eigenschappen": "Key properties as flowing Dutch text",
+  "specificaties": "Technical specs as flowing Dutch text e.g. Inhoud: 400L · Laadvermogen: 50kg",
+  "geschikt_voor": "Compatible models and years e.g. Volvo EX30 2024–2026",
+  "vendor": "Brand name",
+  "collectie": "Dutch product category e.g. Bagagedragers, Velgen",
+  "tags": "6-8 Dutch search terms, comma-separated"
+}`;
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+
+      if (!response.ok) throw new Error('API error ' + response.status);
+
+      const data = await response.json();
+      const clean = (data.result || '').replace(/```json|```/g, '').trim();
+      const r = JSON.parse(clean);
+
+      set('out-titel',        r.titel);
+      set('out-prijs',        r.prijs ? `€ ${parseFloat(r.prijs).toFixed(2)}` : '—');
+      set('out-beschrijving', r.beschrijving);
+      set('out-plus1',        r.pluspunt1);
+      set('out-plus2',        r.pluspunt2);
+      set('out-plus3',        r.pluspunt3);
+      set('out-min1',         r.minpunt1);
+      set('out-merk',         r.merk);
+      set('out-modellen',     r.modellen);
+      set('out-eigenschappen',r.eigenschappen);
+      set('out-specificaties',r.specificaties);
+      set('out-geschikt',     r.geschikt_voor);
+      set('out-vendor',       r.vendor);
+      set('out-collectie',    r.collectie);
+      set('out-tags',         r.tags);
+
+      empty.style.display = 'none';
+      fields.style.display = 'flex';
+
+    } catch (e) {
+      err.classList.add('visible');
+      console.error(e);
+    } finally {
+      btn.disabled = false;
+      bar.classList.remove('visible');
+      txt.classList.remove('visible');
+    }
+  }
+</script>
+</body>
+</html>
