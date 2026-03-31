@@ -37,7 +37,6 @@
     min-height: 100vh;
   }
 
-  /* Left panel */
   .panel-input {
     padding: 48px 40px;
     border-right: 1px solid var(--border);
@@ -50,7 +49,6 @@
     flex-direction: column;
   }
 
-  /* Right panel */
   .panel-output {
     padding: 48px 40px;
     background: var(--bg);
@@ -209,7 +207,6 @@
     font-family: 'DM Mono', monospace;
   }
 
-  /* Output */
   .output-title {
     font-size: 22px;
     font-weight: 300;
@@ -291,6 +288,17 @@
     line-height: 1.7;
     white-space: pre-wrap;
     word-break: break-word;
+  }
+
+  .bullet-line {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 5px;
+    align-items: baseline;
+  }
+  .bullet-dot {
+    color: var(--text-muted);
+    flex-shrink: 0;
   }
 
   .output-grid-2 {
@@ -479,9 +487,18 @@
 </div>
 
 <script>
+  const bulletFields = ['out-eigenschappen', 'out-specificaties'];
+
   function copyBlock(blockId, btn) {
     const content = document.querySelector('#' + blockId + ' .output-block-content');
-    navigator.clipboard.writeText(content.textContent.trim()).then(() => {
+    const lines = content.querySelectorAll('.bullet-line');
+    let text;
+    if (lines.length > 0) {
+      text = Array.from(lines).map(l => '• ' + l.querySelector('.bullet-text').textContent.trim()).join('\n');
+    } else {
+      text = content.textContent.trim();
+    }
+    navigator.clipboard.writeText(text).then(() => {
       btn.textContent = 'Copied!';
       btn.classList.add('copied');
       setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
@@ -489,19 +506,30 @@
   }
 
   function set(id, value) {
-    document.getElementById(id).textContent = value || '—';
+    const el = document.getElementById(id);
+    if (!value) { el.textContent = '—'; return; }
+
+    if (bulletFields.includes(id)) {
+      const lines = value.split('\n').filter(l => l.trim());
+      el.innerHTML = lines.map(line => {
+        const clean = line.replace(/^•\s*/, '').trim();
+        return `<div class="bullet-line"><span class="bullet-dot">•</span><span class="bullet-text">${clean}</span></div>`;
+      }).join('');
+    } else {
+      el.textContent = value;
+    }
   }
 
   async function generateListing() {
     const raw = document.getElementById('inp-raw').value.trim();
     if (!raw) { alert('Please paste some product text first.'); return; }
 
-    const btn       = document.getElementById('gen-btn');
-    const bar       = document.getElementById('loading-bar');
-    const txt       = document.getElementById('loading-text');
-    const err       = document.getElementById('error-msg');
-    const empty     = document.getElementById('empty-state');
-    const fields    = document.getElementById('fields-list');
+    const btn    = document.getElementById('gen-btn');
+    const bar    = document.getElementById('loading-bar');
+    const txt    = document.getElementById('loading-text');
+    const err    = document.getElementById('error-msg');
+    const empty  = document.getElementById('empty-state');
+    const fields = document.getElementById('fields-list');
 
     btn.disabled = true;
     bar.classList.add('visible');
@@ -535,8 +563,8 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
   "minpunt1": "Honest limitation, one Dutch sentence",
   "merk": "Brand name",
   "modellen": "Comma-separated compatible models",
-  "eigenschappen": "Key properties as flowing Dutch text",
-  "specificaties": "Technical specs as flowing Dutch text e.g. Inhoud: 400L · Laadvermogen: 50kg",
+  "eigenschappen": "Key properties as bullet points, each on a new line starting with • e.g. • Stevige constructie\n• Eenvoudig te monteren\n• Slot inbegrepen",
+  "specificaties": "Technical specs as bullet points, each on a new line starting with • e.g. • Inhoud: 400L\n• Laadvermogen: 50kg\n• Afmetingen: 180 x 80 x 40 cm",
   "geschikt_voor": "Compatible models and years e.g. Volvo EX30 2024–2026",
   "vendor": "Brand name",
   "collectie": "Dutch product category e.g. Bagagedragers, Velgen",
@@ -556,21 +584,21 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
       const clean = (data.result || '').replace(/```json|```/g, '').trim();
       const r = JSON.parse(clean);
 
-      set('out-titel',        r.titel);
-      set('out-prijs',        r.prijs ? `€ ${parseFloat(r.prijs).toFixed(2)}` : '—');
-      set('out-beschrijving', r.beschrijving);
-      set('out-plus1',        r.pluspunt1);
-      set('out-plus2',        r.pluspunt2);
-      set('out-plus3',        r.pluspunt3);
-      set('out-min1',         r.minpunt1);
-      set('out-merk',         r.merk);
-      set('out-modellen',     r.modellen);
-      set('out-eigenschappen',r.eigenschappen);
-      set('out-specificaties',r.specificaties);
-      set('out-geschikt',     r.geschikt_voor);
-      set('out-vendor',       r.vendor);
-      set('out-collectie',    r.collectie);
-      set('out-tags',         r.tags);
+      set('out-titel',         r.titel);
+      set('out-prijs',         r.prijs ? `€ ${parseFloat(r.prijs).toFixed(2)}` : '—');
+      set('out-beschrijving',  r.beschrijving);
+      set('out-plus1',         r.pluspunt1);
+      set('out-plus2',         r.pluspunt2);
+      set('out-plus3',         r.pluspunt3);
+      set('out-min1',          r.minpunt1);
+      set('out-merk',          r.merk);
+      set('out-modellen',      r.modellen);
+      set('out-eigenschappen', r.eigenschappen);
+      set('out-specificaties', r.specificaties);
+      set('out-geschikt',      r.geschikt_voor);
+      set('out-vendor',        r.vendor);
+      set('out-collectie',     r.collectie);
+      set('out-tags',          r.tags);
 
       empty.style.display = 'none';
       fields.style.display = 'flex';
