@@ -510,9 +510,14 @@
     if (!value) { el.textContent = '—'; return; }
 
     if (bulletFields.includes(id)) {
-      const lines = value.split('\n').filter(l => l.trim());
+      // Split by newline first; fall back to splitting on bullet chars or semicolons
+      let lines = value.split('\n').map(l => l.trim()).filter(l => l);
+      if (lines.length <= 1) {
+        lines = value.split(/[;]/).map(l => l.trim()).filter(l => l);
+      }
+      el.style.whiteSpace = 'normal';
       el.innerHTML = lines.map(line => {
-        const clean = line.replace(/^•\s*/, '').trim();
+        const clean = line.replace(/^[•\-]\s*/, '').trim();
         return `<div class="bullet-line"><span class="bullet-dot">•</span><span class="bullet-text">${clean}</span></div>`;
       }).join('');
     } else {
@@ -563,8 +568,8 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation:
   "minpunt1": "Honest limitation, one Dutch sentence",
   "merk": "Brand name",
   "modellen": "Comma-separated compatible models",
-  "eigenschappen": "Key properties as bullet points, each on a new line starting with • e.g. • Stevige constructie\n• Eenvoudig te monteren\n• Slot inbegrepen",
-  "specificaties": "Technical specs as bullet points, each on a new line starting with • e.g. • Inhoud: 400L\n• Laadvermogen: 50kg\n• Afmetingen: 180 x 80 x 40 cm",
+  "eigenschappen": "REQUIRED: list each property on its own line, starting with • — example: • Stevige constructie\n• Eenvoudig te monteren\n• Slot inbegrepen\nMinimum 4 bullet points.",
+  "specificaties": "REQUIRED: list each spec on its own line, starting with • — example: • Inhoud: 400L\n• Laadvermogen: 50kg\n• Afmetingen: 180 x 80 x 40 cm\nMinimum 3 bullet points.",
   "geschikt_voor": "Compatible models and years e.g. Volvo EX30 2024–2026",
   "vendor": "Brand name",
   "collectie": "Dutch product category e.g. Bagagedragers, Velgen",
